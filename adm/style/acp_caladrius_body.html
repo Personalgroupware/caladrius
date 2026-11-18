@@ -1,0 +1,82 @@
+{% include 'overall_header.html' %}
+
+<style>
+	.caladrius-summary { font-size: 1.3em; font-weight: bold; margin: 8px 0 4px; }
+	.caladrius-summary.ok { color: #2e7d4f; }
+	.caladrius-summary.problems { color: #b26a00; }
+	.caladrius-group { margin-top: 18px; }
+	.caladrius-item { display: flex; gap: 12px; align-items: flex-start; border: 1px solid #ccc; border-left: 6px solid #999;
+		background: #fff; border-radius: 4px; padding: 10px 12px; margin: 8px 0; }
+	.caladrius-item.ok { border-left-color: #2e7d4f; }
+	.caladrius-item.warn { border-left-color: #e0a000; }
+	.caladrius-item.bad { border-left-color: #b3261e; }
+	.caladrius-item.unknown { border-left-color: #999; }
+	.caladrius-badge { flex: 0 0 auto; min-width: 70px; text-align: center; font-weight: bold; font-size: .9em;
+		border-radius: 12px; padding: 2px 8px; color: #fff; background: #999; }
+	.caladrius-item.ok .caladrius-badge { background: #2e7d4f; }
+	.caladrius-item.warn .caladrius-badge { background: #b26a00; }
+	.caladrius-item.bad .caladrius-badge { background: #b3261e; }
+	.caladrius-body { flex: 1 1 auto; }
+	.caladrius-body h4 { margin: 0 0 4px; font-size: 1.1em; }
+	.caladrius-body ul { margin: 6px 0 0 18px; font-family: monospace; font-size: .95em; }
+	.caladrius-todo { margin-top: 6px; padding: 6px 8px; background: #f6f3e6; border-radius: 3px; }
+</style>
+
+<h1>{{ lang('ACP_CALADRIUS_TITLE') }}: {{ lang('ACP_CALADRIUS_HEALTH') }}</h1>
+<p>{{ lang('CALADRIUS_INTRO') }}</p>
+
+{% if S_MESSAGE %}
+<div class="successbox"><p>{{ S_MESSAGE }}</p></div>
+{% endif %}
+
+<p class="caladrius-summary {% if S_PROBLEMS %}problems{% else %}ok{% endif %}">{{ SUMMARY }}</p>
+
+<form id="caladrius_run" method="post" action="{{ U_ACTION }}">
+	<p>{{ LAST_RUN }}
+		<input class="button1" type="submit" name="run" value="{{ lang('CALADRIUS_RUN_NOW') }}" />
+	</p>
+	{{ S_FORM_TOKEN }}
+</form>
+
+{% for group in groups %}
+<div class="caladrius-group">
+	<h2>{{ group.TITLE }}</h2>
+	{% for item in group.items %}
+	<div class="caladrius-item {{ item.STATE }}">
+		<span class="caladrius-badge">{{ item.STATE_LABEL }}</span>
+		<div class="caladrius-body">
+			<h4>{{ item.TITLE }}</h4>
+			<div>{{ item.DETAIL }}</div>
+			{% if item.list|length %}
+			<ul>
+				{% for line in item.list %}<li>{{ line.TEXT }}</li>{% endfor %}
+				{% if item.MORE %}<li>{{ item.MORE }}</li>{% endif %}
+			</ul>
+			{% endif %}
+			{% if item.TODO %}<div class="caladrius-todo"><strong>{{ lang('CALADRIUS_WHAT_TO_DO') }}:</strong> {{ item.TODO }}</div>{% endif %}
+		</div>
+	</div>
+	{% endfor %}
+</div>
+{% endfor %}
+
+<form id="caladrius_settings" method="post" action="{{ U_ACTION }}">
+	<fieldset>
+		<legend>{{ lang('CALADRIUS_EMAIL_TITLE') }}</legend>
+		<dl>
+			<dt><label for="caladrius_email">{{ lang('CALADRIUS_EMAIL') }}{{ lang('COLON') }}</label><br />
+				<span>{{ lang('CALADRIUS_EMAIL_EXPLAIN') }}</span>
+				{% if not S_BOARD_EMAIL %}<br /><strong>{{ lang('CALADRIUS_EMAIL_BOARD_OFF') }}</strong>{% endif %}</dt>
+			<dd>
+				<label><input type="radio" class="radio" id="caladrius_email" name="caladrius_email" value="1"{% if S_EMAIL %} checked="checked"{% endif %} /> {{ lang('YES') }}</label>
+				<label><input type="radio" class="radio" name="caladrius_email" value="0"{% if not S_EMAIL %} checked="checked"{% endif %} /> {{ lang('NO') }}</label>
+			</dd>
+		</dl>
+		<p class="submit-buttons">
+			<input class="button1" type="submit" name="save" value="{{ lang('SUBMIT') }}" />
+		</p>
+		{{ S_FORM_TOKEN }}
+	</fieldset>
+</form>
+
+{% include 'overall_footer.html' %}

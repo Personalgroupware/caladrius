@@ -1,0 +1,15 @@
+Subject: Caladrius: something needs attention on {SITENAME}
+
+Hello {USERNAME},
+
+Caladrius found something new that needs attention on {SITENAME}:
+
+{ITEMS}
+
+Open the admin control panel and go to Extensions > Caladrius > Board health to see the details and what to do.
+
+{U_BOARD}
+
+You get this email because email alerts are switched on in Caladrius. You can switch them off on the same page.
+
+{EMAIL_SIG}

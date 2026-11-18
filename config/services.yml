@@ -1,0 +1,32 @@
+services:
+    personalgroupware.caladrius.checker:
+        class: personalgroupware\caladrius\service\checker
+        arguments:
+            - '@config'
+            - '@config_text'
+            - '@dbal.conn'
+            - '@version_helper'
+            - '%core.root_path%'
+            - '%core.cache_dir%'
+            - '%core.table_prefix%'
+
+    personalgroupware.caladrius.alerts:
+        class: personalgroupware\caladrius\service\alerts
+        arguments:
+            - '@config'
+            - '@dbal.conn'
+            - '@language'
+            - '%core.root_path%'
+            - '%core.php_ext%'
+            - '%core.table_prefix%'
+
+    personalgroupware.caladrius.cron.task.check:
+        class: personalgroupware\caladrius\cron\task\check
+        arguments:
+            - '@config'
+            - '@personalgroupware.caladrius.checker'
+            - '@personalgroupware.caladrius.alerts'
+        calls:
+            - [set_name, [cron.task.personalgroupware.caladrius.check]]
+        tags:
+            - { name: cron.task }

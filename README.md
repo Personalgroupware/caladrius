@@ -41,8 +41,8 @@ Each item is green, amber or red, with one line on what to do about anything tha
 
 ## Install
 
-1. Download and unzip the extension.
-2. Copy the folder to `ext/personalgroupware/caladrius` on your board.
+1. Download the zip from [Releases](https://github.com/Personalgroupware/caladrius/releases) (not GitHub's green "Code" button, which names the folder wrongly).
+2. Unzip it and upload the `personalgroupware` folder into your board's `ext/` folder, so you have `ext/personalgroupware/caladrius/`.
 3. In the admin panel go to **Customise > Manage extensions** and enable **Caladrius**.
 4. Open **Extensions > Caladrius > Board health**.
 

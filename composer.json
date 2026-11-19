@@ -3,7 +3,7 @@
 	"type": "phpbb-extension",
 	"description": "A plain-English health page for your board: scheduled jobs, the email queue, database growth, support dates, and a tampering check of phpBB's own files. It only reads, and it sends nothing anywhere.",
 	"homepage": "https://www.personalgroupware.com/caladrius/",
-	"version": "0.1.0-dev",
+	"version": "0.1.1-dev",
 	"time": "2026-11-18",
 	"license": "GPL-2.0-only",
 	"authors": [

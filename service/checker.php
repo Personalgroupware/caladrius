@@ -551,11 +551,33 @@ class checker
 		{
 			$known[$r['ext_name']] = true;
 		}
+		// Some extensions ship a shared library as its own folder (canidev/core for canidev's
+		// extensions). It is never installed itself, so look at what installed extensions use.
+		$uses = '';
+		foreach (array_keys($known) as $ext)
+		{
+			$files = array_merge(['ext.php', 'composer.json'], array_map(function ($f) use ($ext) {
+				return substr($f, strlen($this->root . 'ext/' . $ext) + 1);
+			}, glob($this->root . 'ext/' . $ext . '/config/*.yml') ?: []));
+			foreach ($files as $f)
+			{
+				$path = $this->root . 'ext/' . $ext . '/' . $f;
+				if (is_file($path) && filesize($path) < 262144)
+				{
+					$uses .= strtolower((string) @file_get_contents($path)) . "\n";
+				}
+			}
+		}
 		$list = [];
 		foreach (glob($this->root . 'ext/*/*', GLOB_ONLYDIR) ?: [] as $d)
 		{
 			$name = substr(str_replace('\\', '/', $d), strlen($this->root) + 4);
 			if (isset($known[$name]))
+			{
+				continue;
+			}
+			$lower = strtolower($name);
+			if (strpos($uses, '"' . $lower . '"') !== false || strpos($uses, str_replace('/', '\\', $lower) . '\\') !== false)
 			{
 				continue;
 			}

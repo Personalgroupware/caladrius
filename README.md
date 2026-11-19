@@ -50,6 +50,10 @@ Each item is green, amber or red, with one line on what to do about anything tha
 
 Disable the extension, then press **Delete data**. Caladrius removes its settings, stored results and admin page, and leaves nothing behind.
 
+## Feedback
+
+Questions, false alarms or things it missed: reply on the [phpBB.com development topic](https://www.phpbb.com/community/viewtopic.php?t=2677153) or open an [issue here on GitHub](https://github.com/Personalgroupware/caladrius/issues).
+
 ## License
 
 [GNU General Public License v2](license.txt)

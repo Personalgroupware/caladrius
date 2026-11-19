@@ -20,6 +20,9 @@
 	.caladrius-body h4 { margin: 0 0 4px; font-size: 1.1em; }
 	.caladrius-body ul { margin: 6px 0 0 18px; font-family: monospace; font-size: .95em; }
 	.caladrius-todo { margin-top: 6px; padding: 6px 8px; background: #f6f3e6; border-radius: 3px; }
+	.caladrius-copy { margin: 4px 0 12px; }
+	.caladrius-copy summary { cursor: pointer; }
+	.caladrius-copy textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: .95em; }
 </style>
 
 <h1>{{ lang('ACP_CALADRIUS_TITLE') }}: {{ lang('ACP_CALADRIUS_HEALTH') }}</h1>
@@ -34,9 +37,65 @@
 <form id="caladrius_run" method="post" action="{{ U_ACTION }}">
 	<p>{{ LAST_RUN }}
 		<input class="button1" type="submit" name="run" value="{{ lang('CALADRIUS_RUN_NOW') }}" />
+		<input class="button2" type="button" id="caladrius_copy" value="{{ lang('CALADRIUS_COPY') }}" data-ok="{{ lang('CALADRIUS_COPIED') }}" data-fail="{{ lang('CALADRIUS_COPY_FAILED') }}" />
+		<strong id="caladrius_copied" role="status"></strong>
 	</p>
 	{{ S_FORM_TOKEN }}
 </form>
+
+<details id="caladrius_copy_box" class="caladrius-copy">
+	<summary>{{ lang('CALADRIUS_COPY_SHOW') }}</summary>
+	<p>{{ lang('CALADRIUS_COPY_EXPLAIN') }}</p>
+	<textarea id="caladrius_report" readonly="readonly" rows="14" cols="80">{{ REPORT }}</textarea>
+</details>
+
+<script>
+(function () {
+	var button = document.getElementById('caladrius_copy');
+	var box = document.getElementById('caladrius_copy_box');
+	var area = document.getElementById('caladrius_report');
+	var status = document.getElementById('caladrius_copied');
+	if (!button || !area) {
+		return;
+	}
+	function selectText() {
+		box.open = true;
+		area.focus();
+		area.select();
+	}
+	function fallback() {
+		var wasOpen = box.open;
+		selectText();
+		var ok = false;
+		try {
+			ok = document.execCommand('copy');
+		} catch (e) {
+			ok = false;
+		}
+		if (ok) {
+			box.open = wasOpen;
+		}
+		return ok;
+	}
+	function done(ok) {
+		status.textContent = ok ? button.getAttribute('data-ok') : button.getAttribute('data-fail');
+		if (!ok) {
+			selectText();
+		}
+	}
+	button.addEventListener('click', function () {
+		if (navigator.clipboard && window.isSecureContext) {
+			navigator.clipboard.writeText(area.value).then(function () {
+				done(true);
+			}, function () {
+				done(fallback());
+			});
+		} else {
+			done(fallback());
+		}
+	});
+})();
+</script>
 
 {% for group in groups %}
 <div class="caladrius-group">

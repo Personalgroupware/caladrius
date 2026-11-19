@@ -28,6 +28,14 @@ $lang = array_merge($lang, [
 		2	=> '%d things need attention.',
 	],
 	'CALADRIUS_WHAT_TO_DO'		=> 'What to do',
+
+	'CALADRIUS_COPY'			=> 'Copy report',
+	'CALADRIUS_COPIED'			=> 'Copied. Paste it into a post.',
+	'CALADRIUS_COPY_FAILED'		=> 'Your browser didn’t allow copying. The report is selected below, press Ctrl+C (Cmd+C on a Mac).',
+	'CALADRIUS_COPY_SHOW'		=> 'Show the report text',
+	'CALADRIUS_COPY_EXPLAIN'	=> 'The same results as BBCode, ready to paste into a forum post, for example when asking for help on phpBB.com. Folder paths, email addresses, IP addresses and your board’s address are replaced with [path], [email], [ip] and [board address]. Read it before you post it.',
+	'CALADRIUS_REPORT_HEAD'		=> 'Caladrius %1$s report. phpBB %2$s, PHP %3$s',
+	'CALADRIUS_REPORT_FOOT'		=> 'Copied from Caladrius. Paths, email addresses, IP addresses and the board address were removed.',
 	'CALADRIUS_LIST_MORE'		=> 'and %d more',
 
 	'CALADRIUS_STATE_OK'		=> 'OK',

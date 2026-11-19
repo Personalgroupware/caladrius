@@ -104,6 +104,14 @@ $lang = array_merge($lang, [
 	'CALADRIUS_PHPBB_LOG_UNKNOWN'	=> 'Couldn’t be checked.',
 	'CALADRIUS_PHPBB_LOG_TODO'	=> 'See Maintenance > Error log for the full messages. Email errors usually mean the email settings need checking.',
 	'CALADRIUS_LOG_LINE'		=> '%1$s (%2$d times)',
+	'CALADRIUS_LOG_ENTRY'		=> [
+		1	=> '%2$s',
+		2	=> '%2$s (%1$d times)',
+	],
+	'CALADRIUS_LOG_REFUSED'		=> [
+		1	=> 'Not counted: %d page phpBB refused (an expired link, a bot, or a deleted topic). That’s normal.',
+		2	=> 'Not counted: %d pages phpBB refused (expired links, bots, or deleted topics). That’s normal.',
+	],
 
 	// PHP errors
 	'CALADRIUS_PHP_ERRORS_TITLE'	=> 'PHP errors on the server',

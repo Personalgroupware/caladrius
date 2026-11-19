@@ -257,17 +257,46 @@ class checker
 	protected function phpbb_log()
 	{
 		$since = time() - 86400;
-		$rows = $this->rows('SELECT log_operation, COUNT(log_id) AS n FROM ' . LOG_TABLE . '
+		$rows = $this->rows('SELECT log_operation, log_data FROM ' . LOG_TABLE . '
 			WHERE log_type = ' . LOG_CRITICAL . ' AND log_time >= ' . $since . '
-			GROUP BY log_operation ORDER BY n DESC', 5);
+			ORDER BY log_time DESC', 2000);
 		$total = 0;
-		$list = [];
+		$refused = 0;
+		$seen = [];
 		foreach ($rows as $r)
 		{
-			$total += (int) $r['n'];
-			$list[] = ['key' => 'CALADRIUS_LOG_LINE', 'args' => [$r['log_operation'], (int) $r['n']]];
+			$data = @unserialize($r['log_data'], ['allowed_classes' => false]);
+			$data = is_array($data) ? array_values(array_map(function ($v) {
+				return is_scalar($v) ? substr((string) $v, 0, 300) : '';
+			}, $data)) : [];
+			// A page phpBB refused with a 4xx code (an expired link, a bot probing, a deleted topic)
+			// is phpBB doing its job, not a fault, so it is counted separately and never turns the item amber.
+			if ($r['log_operation'] === 'LOG_GENERAL_ERROR' && isset($data[0]) && preg_match('/^\s*4\d\d\b/', $data[0]))
+			{
+				$refused++;
+				continue;
+			}
+			$total++;
+			$k = $r['log_operation'] . "\n" . implode("\n", $data);
+			if (!isset($seen[$k]))
+			{
+				$seen[$k] = ['op' => $r['log_operation'], 'data' => $data, 'n' => 0];
+			}
+			$seen[$k]['n']++;
 		}
-		return $this->item('phpbb_log', $total ? 'warn' : 'ok', [$total], $list);
+		uasort($seen, function ($a, $b) {
+			return $b['n'] - $a['n'];
+		});
+		$list = [];
+		foreach (array_slice($seen, 0, 5) as $s)
+		{
+			$list[] = ['key' => 'CALADRIUS_LOG_ENTRY', 'args' => [$s['n'], $s['op']], 'log' => $s['data']];
+		}
+		if ($refused)
+		{
+			$list[] = ['key' => 'CALADRIUS_LOG_REFUSED', 'args' => [$refused]];
+		}
+		return $this->item('phpbb_log', $total ? 'warn' : 'ok', [$total, $refused], $list);
 	}
 
 	/** PHP errors in the server's error log in the last 24 hours, when the host lets PHP read that log. */

@@ -88,9 +88,17 @@ class main_module
 				]);
 				foreach ($item['list'] as $line)
 				{
-					$text = is_array($line)
-						? $this->text($language, $user, $line['key'], isset($line['args']) ? $line['args'] : [])
-						: $line;
+					if (is_array($line) && $line['key'] === 'CALADRIUS_LOG_ENTRY')
+					{
+						$text = $language->lang('CALADRIUS_LOG_ENTRY', (int) $line['args'][0],
+							$this->log_message($language, (string) $line['args'][1], isset($line['log']) ? (array) $line['log'] : []));
+					}
+					else
+					{
+						$text = is_array($line)
+							? $this->text($language, $user, $line['key'], isset($line['args']) ? $line['args'] : [])
+							: $line;
+					}
 					$template->assign_block_vars('groups.items.list', ['TEXT' => $text]);
 				}
 			}
@@ -120,6 +128,34 @@ class main_module
 			}
 		}
 		return call_user_func_array([$language, 'lang'], array_merge([$key], array_values($args)));
+	}
+
+	/**
+	 * A phpBB log entry in words, the way Maintenance > Error log shows it, as plain escaped text.
+	 * Falls back to the log code and its details when no language string is loaded for it.
+	 */
+	protected function log_message($language, $operation, array $data)
+	{
+		$data = array_map('strval', $data);
+		$raw = $language->is_set($operation) ? $language->lang($operation) : '';
+		if (is_string($raw) && $raw !== '')
+		{
+			$needed = preg_match_all('/%(\d+\$)?[sd]/', $raw);
+			$args = array_pad($data, max($needed, count($data)), '');
+			$msg = @vsprintf($raw, $args);
+			if (!is_string($msg) || $msg === '')
+			{
+				$msg = $raw;
+			}
+		}
+		else
+		{
+			$msg = $operation . ($data ? ': ' . implode(' | ', $data) : '');
+		}
+		$msg = preg_replace('/(<br\s*\/?>\s*)*(&raquo;|»)\s*/u', ': ', $msg);
+		$msg = preg_replace('/:\s*:/', ':', strip_tags(preg_replace('/<br\s*\/?>/', ' ', $msg)));
+		$msg = trim(preg_replace(['/\s+/u', '/ :/', '/:+$/'], [' ', ':', ''], html_entity_decode($msg, ENT_QUOTES, 'UTF-8')));
+		return htmlspecialchars($msg, ENT_QUOTES, 'UTF-8');
 	}
 
 	protected function ago($language, $seconds)

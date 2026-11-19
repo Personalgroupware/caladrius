@@ -2,7 +2,7 @@
 
 **A plain-English health page for your board.** Caladrius adds one page to the admin control panel that answers "is everything OK with my forum?" It checks the things that quietly stop working, and whether phpBB's own files have been tampered with.
 
-It only reads. It never changes posts, users, files or settings, and it sends nothing anywhere.
+It only reads. It never changes posts, users, files or settings, and Caladrius itself sends nothing anywhere. (phpBB's own extension update check does fetch one small file from personalgroupware.com, see Updates below.)
 
 *Named after the caladrius, the white bird of Roman and medieval legend that could tell with one look whether a sick person would get better.* A [Personalgroupware](https://www.personalgroupware.com/caladrius/) product.
 
@@ -32,6 +32,12 @@ Each item is green, amber or red, with one line on what to do about anything tha
 
 - Once a day through phpBB's scheduled jobs, and whenever you press **Check now**.
 - Optional email alerts to the board founders when a check turns red. Off until you switch them on. They use the board's own email settings and queue.
+
+## Updates
+
+From 0.1.4-dev, phpBB tells you when a new version is out: Customise > Manage extensions shows it next to Caladrius, with a download link. This is phpBB's standard extension update check. When an admin opens that page, phpBB fetches https://www.personalgroupware.com/caladrius/version.json, which lists the latest version. The request carries nothing about your board, but like any web request it shows our server your server's IP address. Boards on 0.1.3-dev or older don't get the notice, so get those from the [releases page](https://github.com/Personalgroupware/caladrius/releases).
+
+To update, upload the new files over the old ones and purge the board cache.
 
 ## Requirements
 

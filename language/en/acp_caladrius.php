@@ -29,6 +29,22 @@ $lang = array_merge($lang, [
 	],
 	'CALADRIUS_WHAT_TO_DO'		=> 'What to do',
 
+	'CALADRIUS_MARK'			=> 'Mark as checked',
+	'CALADRIUS_MARK_EXPLAIN'	=> 'You’ve looked at this and it’s harmless. It stops counting as a problem until this check finds something different.',
+	'CALADRIUS_MARKED'			=> 'Marked as checked. If this check finds something different later, it will show as a problem again.',
+	'CALADRIUS_UNDO'			=> 'Undo',
+	'CALADRIUS_UNDONE'			=> 'The mark was removed.',
+	'CALADRIUS_CHECKED_BY'		=> 'Marked as checked by %1$s, %2$s. It will come back if this check finds something different.',
+	'CALADRIUS_STATE_CHECKED'	=> 'Checked',
+	'CALADRIUS_REPORT_CHECKED'	=> 'Checked (was %s)',
+	'CALADRIUS_SUMMARY_CHECKED'	=> [
+		1	=> '%d item is marked as checked.',
+		2	=> '%d items are marked as checked.',
+	],
+	'CALADRIUS_FOOTER'			=> 'Caladrius %s',
+	'CALADRIUS_SHOW_CHECKED'	=> 'Show checked items (%d)',
+	'CALADRIUS_HIDE_CHECKED'	=> 'Hide checked items (%d)',
+
 	'CALADRIUS_COPY'			=> 'Copy report',
 	'CALADRIUS_COPIED'			=> 'Copied. Paste it into a post.',
 	'CALADRIUS_COPY_FAILED'		=> 'Your browser didn’t allow copying. The report is selected below, press Ctrl+C (Cmd+C on a Mac).',

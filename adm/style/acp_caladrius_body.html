@@ -23,6 +23,14 @@
 	.caladrius-copy { margin: 4px 0 12px; }
 	.caladrius-copy summary { cursor: pointer; }
 	.caladrius-copy textarea { width: 100%; box-sizing: border-box; font-family: monospace; font-size: .95em; }
+	.caladrius-item.checked { opacity: .6; border-left-color: #999; background: #fafafa; }
+	.caladrius-item.checked .caladrius-badge { background: #777; }
+	.caladrius-item.checked:hover { opacity: 1; }
+	.caladrius-hide-checked .caladrius-item.checked { display: none; }
+	.caladrius-mark { margin-top: 8px; }
+	.caladrius-mark form { display: inline; }
+	.caladrius-checked-by { margin-top: 6px; font-style: italic; }
+	.caladrius-version { margin-top: 16px; text-align: right; color: #777; font-size: .9em; }
 </style>
 
 <h1>{{ lang('ACP_CALADRIUS_TITLE') }}: {{ lang('ACP_CALADRIUS_HEALTH') }}</h1>
@@ -40,6 +48,10 @@
 		<input class="button2" type="button" id="caladrius_copy" value="{{ lang('CALADRIUS_COPY') }}" data-ok="{{ lang('CALADRIUS_COPIED') }}" data-fail="{{ lang('CALADRIUS_COPY_FAILED') }}" />
 		<strong id="caladrius_copied" role="status"></strong>
 	</p>
+	{% if MARKED %}
+	<p><input class="button2" type="button" id="caladrius_toggle" value="{{ lang('CALADRIUS_HIDE_CHECKED', MARKED) }}"
+			data-show="{{ lang('CALADRIUS_SHOW_CHECKED', MARKED) }}" data-hide="{{ lang('CALADRIUS_HIDE_CHECKED', MARKED) }}" /></p>
+		{% endif %}
 	{{ S_FORM_TOKEN }}
 </form>
 
@@ -83,6 +95,25 @@
 			selectText();
 		}
 	}
+	var toggle = document.getElementById('caladrius_toggle');
+	var results = document.getElementById('caladrius_results');
+	function showChecked(hide) {
+		results.className = hide ? 'caladrius-hide-checked' : '';
+		toggle.value = toggle.getAttribute(hide ? 'data-show' : 'data-hide');
+		try {
+			localStorage.setItem('caladrius_hide_checked', hide ? '1' : '0');
+		} catch (e) {}
+	}
+	if (toggle && results) {
+		var hidden = false;
+		try {
+			hidden = localStorage.getItem('caladrius_hide_checked') === '1';
+		} catch (e) {}
+		showChecked(hidden);
+		toggle.addEventListener('click', function () {
+			showChecked(results.className === '');
+		});
+	}
 	button.addEventListener('click', function () {
 		if (navigator.clipboard && window.isSecureContext) {
 			navigator.clipboard.writeText(area.value).then(function () {
@@ -97,12 +128,13 @@
 })();
 </script>
 
+<div id="caladrius_results">
 {% for group in groups %}
 <div class="caladrius-group">
 	<h2>{{ group.TITLE }}</h2>
 	{% for item in group.items %}
-	<div class="caladrius-item {{ item.STATE }}">
-		<span class="caladrius-badge">{{ item.STATE_LABEL }}</span>
+	<div class="caladrius-item {{ item.STATE }}{% if item.S_CHECKED %} checked{% endif %}">
+		<span class="caladrius-badge">{% if item.S_CHECKED %}{{ lang('CALADRIUS_STATE_CHECKED') }}{% else %}{{ item.STATE_LABEL }}{% endif %}</span>
 		<div class="caladrius-body">
 			<h4>{{ item.TITLE }}</h4>
 			<div>{{ item.DETAIL }}</div>
@@ -113,11 +145,27 @@
 			</ul>
 			{% endif %}
 			{% if item.TODO %}<div class="caladrius-todo"><strong>{{ lang('CALADRIUS_WHAT_TO_DO') }}:</strong> {{ item.TODO }}</div>{% endif %}
+			{% if item.S_CHECKED %}
+			<div class="caladrius-checked-by">{{ item.CHECKED_BY }}
+				<form method="post" action="{{ U_ACTION }}" class="caladrius-mark" style="display:inline">
+					<button class="button2" type="submit" name="undo" value="{{ item.ID }}">{{ lang('CALADRIUS_UNDO') }}</button>
+					{{ S_FORM_TOKEN }}
+				</form>
+			</div>
+			{% elseif item.S_CAN_MARK %}
+			<div class="caladrius-mark">
+				<form method="post" action="{{ U_ACTION }}">
+					<button class="button2" type="submit" name="mark" value="{{ item.ID }}" title="{{ lang('CALADRIUS_MARK_EXPLAIN') }}">{{ lang('CALADRIUS_MARK') }}</button>
+					{{ S_FORM_TOKEN }}
+				</form>
+			</div>
+			{% endif %}
 		</div>
 	</div>
 	{% endfor %}
 </div>
 {% endfor %}
+</div>
 
 <form id="caladrius_settings" method="post" action="{{ U_ACTION }}">
 	<fieldset>
@@ -137,5 +185,7 @@
 		{{ S_FORM_TOKEN }}
 	</fieldset>
 </form>
+
+<p class="caladrius-version">{{ CALADRIUS_VERSION }}</p>
 
 {% include 'overall_footer.html' %}

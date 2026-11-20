@@ -28,6 +28,12 @@ It only reads. It never changes posts, users, files or settings, and Caladrius i
 
 Each item is green, amber or red, with one line on what to do about anything that isn't green.
 
+## Mark as checked
+
+From 0.1.5-dev, an amber or red item you've looked at and found harmless can be marked as checked. It stops counting towards the summary but stays on the page, greyed out, with who marked it, when, and an Undo button. **Hide checked items** / **Show checked items** next to the summary switches them out of view, and the summary always says how many are marked.
+
+A mark only holds while the check finds exactly the same thing. If it finds something different (another changed file, a new error, a newer version) or the item gets worse, it comes back as a normal warning.
+
 ## When it runs
 
 - Once a day through phpBB's scheduled jobs, and whenever you press **Check now**.

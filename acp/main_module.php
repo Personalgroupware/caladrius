@@ -36,7 +36,7 @@ class main_module
 		add_form_key('personalgroupware_caladrius');
 
 		$message = '';
-		if ($request->is_set_post('run') || $request->is_set_post('save'))
+		if ($request->is_set_post('run') || $request->is_set_post('save') || $request->is_set_post('mark') || $request->is_set_post('undo'))
 		{
 			if (!check_form_key('personalgroupware_caladrius'))
 			{
@@ -46,6 +46,10 @@ class main_module
 			{
 				$config->set('caladrius_email', $request->variable('caladrius_email', 0) ? 1 : 0);
 				$message = $language->lang('CALADRIUS_SAVED');
+			}
+			else if ($request->is_set_post('mark') || $request->is_set_post('undo'))
+			{
+				$message = $this->mark($checker, $user, $language, $request);
 			}
 			else
 			{
@@ -64,12 +68,23 @@ class main_module
 		$colours = ['ok' => '#2e7d4f', 'warn' => '#b26a00', 'bad' => '#b3261e', 'unknown' => '#777777'];
 		$report = [];
 		$problems = 0;
+		$marked = 0;
+		$checked = $checker->checked();
 		$by_group = array_fill_keys($order, []);
 		foreach ($results['items'] as $item)
 		{
 			if (in_array($item['state'], ['warn', 'bad'], true))
 			{
-				$problems++;
+				// a mark only holds while the check still finds exactly the same thing
+				if (isset($checked[$item['id']]['sig']) && $checked[$item['id']]['sig'] === $checker->item_signature($item))
+				{
+					$item['checked'] = $checked[$item['id']];
+					$marked++;
+				}
+				else
+				{
+					$problems++;
+				}
 			}
 			$by_group[$item['group']][] = $item;
 		}
@@ -83,7 +98,12 @@ class main_module
 			foreach ($by_group[$group] as $item)
 			{
 				$key = 'CALADRIUS_' . strtoupper($item['id']);
+				$is_checked = isset($item['checked']);
 				$row = [
+					'ID'			=> $item['id'],
+					'S_CAN_MARK'	=> !$is_checked && in_array($item['state'], ['warn', 'bad'], true),
+					'S_CHECKED'		=> $is_checked,
+					'CHECKED_BY'	=> $is_checked ? $language->lang('CALADRIUS_CHECKED_BY', $item['checked']['user'], $user->format_date($item['checked']['time'])) : '',
 					'STATE'			=> $item['state'],
 					'STATE_LABEL'	=> $language->lang('CALADRIUS_STATE_' . strtoupper($item['state'])),
 					'TITLE'			=> $language->lang($key . '_TITLE'),
@@ -93,7 +113,13 @@ class main_module
 				];
 				$template->assign_block_vars('groups.items', $row);
 				$colour = isset($colours[$item['state']]) ? $colours[$item['state']] : $colours['unknown'];
-				$report[] = '[color=' . $colour . '][b]' . $this->plain($row['STATE_LABEL']) . '[/b][/color] [b]'
+				$label = $row['STATE_LABEL'];
+				if ($is_checked)
+				{
+					$colour = $colours['unknown'];
+					$label = $language->lang('CALADRIUS_REPORT_CHECKED', $row['STATE_LABEL']);
+				}
+				$report[] = '[color=' . $colour . '][b]' . $this->plain($label) . '[/b][/color] [b]'
 					. $this->plain($row['TITLE']) . '[/b]: ' . $this->plain($row['DETAIL']);
 				$report_list = [];
 				foreach ($item['list'] as $line)
@@ -124,6 +150,10 @@ class main_module
 		}
 
 		$summary = $problems ? $language->lang('CALADRIUS_SUMMARY_PROBLEMS', $problems) : $language->lang('CALADRIUS_SUMMARY_OK');
+		if ($marked)
+		{
+			$summary .= ' ' . $language->lang('CALADRIUS_SUMMARY_CHECKED', $marked);
+		}
 		$last_run = $language->lang('CALADRIUS_LAST_RUN', $user->format_date($results['time']), $results['seconds']);
 		array_unshift($report,
 			'[b]' . $this->plain($language->lang('CALADRIUS_REPORT_HEAD', $this->ext_version($phpbb_container), $config['version'], PHP_VERSION)) . '[/b]',
@@ -138,11 +168,44 @@ class main_module
 			'S_MESSAGE'			=> $message,
 			'SUMMARY'			=> $summary,
 			'S_PROBLEMS'		=> (bool) $problems,
+			'MARKED'			=> $marked,
+			'CALADRIUS_VERSION'	=> $language->lang('CALADRIUS_FOOTER', $this->ext_version($phpbb_container)),
 			'LAST_RUN'			=> $last_run,
 			'REPORT'			=> htmlspecialchars($report_text, ENT_QUOTES, 'UTF-8'),
 			'S_EMAIL'			=> (bool) $config['caladrius_email'],
 			'S_BOARD_EMAIL'		=> (bool) $config['email_enable'],
 		]);
+	}
+
+	/**
+	 * "Mark as checked" and "Undo". Only a warning or a problem in the latest results can be marked,
+	 * and the mark keeps that item's fingerprint, so it lapses when the check finds something different.
+	 */
+	protected function mark($checker, $user, $language, $request)
+	{
+		$results = $checker->load();
+		$checked = $checker->checked();
+		if ($request->is_set_post('undo'))
+		{
+			unset($checked[$request->variable('undo', '')]);
+			$checker->set_checked($checked);
+			return $language->lang('CALADRIUS_UNDONE');
+		}
+		$id = $request->variable('mark', '');
+		foreach (($results ? $results['items'] : []) as $item)
+		{
+			if ($item['id'] === $id && in_array($item['state'], ['warn', 'bad'], true))
+			{
+				$checked[$id] = [
+					'sig'	=> $checker->item_signature($item),
+					'time'	=> time(),
+					'user'	=> $user->data['username'],
+				];
+				$checker->set_checked($checked);
+				return $language->lang('CALADRIUS_MARKED');
+			}
+		}
+		return '';
 	}
 
 	/**

@@ -13,7 +13,7 @@ namespace personalgroupware\caladrius\service;
 /**
  * Runs the health checks. Read-only: SELECTs and file reads, nothing is changed and nothing is sent anywhere.
  *
- * Each result item is ['id', 'group', 'state', 'args', 'list'].
+ * Each result item is ['id', 'group', 'state', 'args', 'list', 'more', 'sig'].
  * state is one of ok, warn, bad, unknown. The ACP page turns id + state into words through the language file.
  * Values in 'args' and 'list' that are arrays like ['ago' => seconds] are turned into "5 minutes ago" there.
  */
@@ -124,7 +124,70 @@ class checker
 			'args'	=> $args,
 			'list'	=> array_slice($list, 0, 25),
 			'more'	=> max(0, count($list) - 25),
+			'sig'	=> $this->signature($id, $state, $args, $list),
 		];
+	}
+
+	/**
+	 * A fingerprint of what a check found, used by "Mark as checked". It leaves out what changes
+	 * on its own from run to run (times, counts, sizes), so a marked item stays marked until the
+	 * check finds something different: another file, another error, a newer version, a worse state.
+	 */
+	public function signature($id, $state, array $args, array $list)
+	{
+		$keep = function (array $a) use (&$keep)
+		{
+			$out = [];
+			foreach ($a as $k => $v)
+			{
+				if (is_array($v))
+				{
+					if (!isset($v['ago']))
+					{
+						$out[$k] = $keep($v);
+					}
+				}
+				else if (is_string($v) && !is_numeric($v))
+				{
+					$out[$k] = $v;
+				}
+			}
+			return $out;
+		};
+		$lines = [];
+		foreach ($list as $line)
+		{
+			$lines[] = json_encode(is_array($line) ? $keep($line) : (string) $line);
+		}
+		sort($lines);
+		// the database size is text ("1.2 GB") but it is a measurement, not a finding
+		$top = $id === 'database' ? [] : $keep($args);
+		return sha1(json_encode([$id, $state, $top, $lines]));
+	}
+
+	/** Items an administrator marked as checked: [id => ['sig', 'time', 'user']]. */
+	public function checked()
+	{
+		$json = $this->config_text->get('caladrius_checked');
+		$data = $json ? json_decode($json, true) : null;
+		return is_array($data) ? $data : [];
+	}
+
+	public function set_checked(array $checked)
+	{
+		$json = json_encode($checked);
+		// phpBB inserts a new row when an update changes nothing, so only write a real change
+		if ($json !== (string) $this->config_text->get('caladrius_checked'))
+		{
+			$this->config_text->set('caladrius_checked', $json);
+		}
+	}
+
+	/** The fingerprint of a stored item (results saved before 0.1.5 have none). */
+	public function item_signature(array $item)
+	{
+		return isset($item['sig']) ? $item['sig']
+			: $this->signature($item['id'], $item['state'], (array) $item['args'], (array) $item['list']);
 	}
 
 	protected function rows($sql, $limit = 0)

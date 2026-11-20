@@ -95,25 +95,6 @@
 			selectText();
 		}
 	}
-	var toggle = document.getElementById('caladrius_toggle');
-	var results = document.getElementById('caladrius_results');
-	function showChecked(hide) {
-		results.className = hide ? 'caladrius-hide-checked' : '';
-		toggle.value = toggle.getAttribute(hide ? 'data-show' : 'data-hide');
-		try {
-			localStorage.setItem('caladrius_hide_checked', hide ? '1' : '0');
-		} catch (e) {}
-	}
-	if (toggle && results) {
-		var hidden = false;
-		try {
-			hidden = localStorage.getItem('caladrius_hide_checked') === '1';
-		} catch (e) {}
-		showChecked(hidden);
-		toggle.addEventListener('click', function () {
-			showChecked(results.className === '');
-		});
-	}
 	button.addEventListener('click', function () {
 		if (navigator.clipboard && window.isSecureContext) {
 			navigator.clipboard.writeText(area.value).then(function () {
@@ -166,6 +147,30 @@
 </div>
 {% endfor %}
 </div>
+
+<script>
+(function () {
+	var toggle = document.getElementById('caladrius_toggle');
+	var results = document.getElementById('caladrius_results');
+	function showChecked(hide) {
+		results.className = hide ? 'caladrius-hide-checked' : '';
+		toggle.value = toggle.getAttribute(hide ? 'data-show' : 'data-hide');
+		try {
+			localStorage.setItem('caladrius_hide_checked', hide ? '1' : '0');
+		} catch (e) {}
+	}
+	if (toggle && results) {
+		var hidden = false;
+		try {
+			hidden = localStorage.getItem('caladrius_hide_checked') === '1';
+		} catch (e) {}
+		showChecked(hidden);
+		toggle.addEventListener('click', function () {
+			showChecked(results.className === '');
+		});
+	}
+})();
+</script>
 
 <form id="caladrius_settings" method="post" action="{{ U_ACTION }}">
 	<fieldset>

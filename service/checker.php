@@ -53,6 +53,9 @@ class checker
 	/** @var array path => sha256 of the file on this board, so each file is read once per run */
 	protected $hashes = [];
 
+	/** Folders in store/ already looked at by extension_backup(): [dir => is a backup copy]. */
+	protected $backup_dirs = [];
+
 	public function __construct(\phpbb\config\config $config, \phpbb\config\db_text $config_text, \phpbb\db\driver\driver_interface $db,
 		\phpbb\version_helper $version_helper, $root_path, $cache_dir, $table_prefix)
 	{
@@ -73,6 +76,7 @@ class checker
 		@set_time_limit(300);
 		$t0 = microtime(true);
 		$this->hashes = [];
+		$this->backup_dirs = [];
 		$previous = $this->load();
 
 		$items = [];
@@ -547,11 +551,20 @@ class checker
 		$dirs = array_unique($dirs);
 		$files = 0;
 		$list = [];
+		$backups = [];
+		// store/ is phpBB's private folder. While its .htaccess keeps the web out, copies of
+		// extensions that update tools keep there (Extension Toolbox, for one) are not a way in.
+		$store_blocked = $this->store_blocked();
 		foreach ($dirs as $d)
 		{
 			foreach ($this->walk($d) as $f)
 			{
 				$files++;
+				if ($store_blocked && strpos($f, 'store/') === 0 && ($backup = $this->extension_backup($f)) !== null)
+				{
+					$backups[$backup] = true;
+					continue;
+				}
 				$base = basename($f);
 				if (preg_match('/^(\.htaccess|\.htpasswd|\.user\.ini|php\.ini|php5\.ini|web\.config)$/i', $base))
 				{
@@ -585,7 +598,44 @@ class checker
 				}
 			}
 		}
-		return $this->item('uploads', $list ? 'bad' : 'ok', [$files], $list);
+		$state = $list ? 'bad' : ($backups ? 'warn' : 'ok');
+		ksort($backups);
+		foreach (array_keys($backups) as $b)
+		{
+			$list[] = ['key' => 'CALADRIUS_UPLOADS_BACKUP', 'args' => [$b]];
+		}
+		return $this->item('uploads', $state, [$files, count($backups)], $list);
+	}
+
+	/** True when store/.htaccess keeps the web out, as the one phpBB ships does. */
+	protected function store_blocked()
+	{
+		$src = (string) @file_get_contents($this->root . 'store/.htaccess');
+		return (bool) preg_match('/^\s*(Require\s+all\s+denied|Deny\s+from\s+all)\s*$/im', $src);
+	}
+
+	/**
+	 * The folder of a backup copy of an extension that holds this file, or null.
+	 * A backup copy is a folder inside store/ with ext.php and a composer.json of type phpbb-extension.
+	 */
+	protected function extension_backup($f)
+	{
+		$dir = dirname($f);
+		while ($dir !== 'store' && $dir !== '.' && $dir !== '')
+		{
+			if (!array_key_exists($dir, $this->backup_dirs))
+			{
+				$json = is_file($this->root . $dir . '/ext.php') ? @file_get_contents($this->root . $dir . '/composer.json') : false;
+				$data = $json ? json_decode($json, true) : null;
+				$this->backup_dirs[$dir] = is_array($data) && isset($data['type']) && $data['type'] === 'phpbb-extension';
+			}
+			if ($this->backup_dirs[$dir])
+			{
+				return $dir;
+			}
+			$dir = dirname($dir);
+		}
+		return null;
 	}
 
 	protected function runs_code($f)

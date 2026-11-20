@@ -21,7 +21,7 @@ It only reads. It never changes posts, users, files or settings, and Caladrius i
 
 **Tampering check**
 - **phpBB's own files** compared with the official package for your version (SHA-256 fingerprints shipped with the extension).
-- **Upload folders:** scripts, PHP hidden inside "pictures", settings files that could make uploads run as code, and the installer's leftover `store/install_config.php`.
+- **Upload folders:** scripts, PHP hidden inside "pictures", settings files that could make uploads run as code, and the installer's leftover `store/install_config.php`. Backup copies of extensions that update tools such as Extension Toolbox keep in `store/` show as amber, not red, while `store/.htaccess` keeps the web out (from 0.1.6-dev). The web shell check still looks inside them.
 - **Web shell and miner patterns** in PHP, JavaScript and HTML that isn't part of the official package.
 - **Unknown extension folders** that hold PHP but aren't installed extensions.
 - **Setup:** a leftover `install/` folder, or a `config.php` anyone on the server can change.

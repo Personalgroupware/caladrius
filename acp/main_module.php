@@ -108,7 +108,7 @@ class main_module
 					'STATE_LABEL'	=> $language->lang('CALADRIUS_STATE_' . strtoupper($item['state'])),
 					'TITLE'			=> $language->lang($key . '_TITLE'),
 					'DETAIL'		=> $this->text($language, $user, $key . '_' . strtoupper($item['state']), $item['args']),
-					'TODO'			=> in_array($item['state'], ['warn', 'bad'], true) && $language->is_set($key . '_TODO') ? $language->lang($key . '_TODO') : '',
+					'TODO'			=> $this->todo($language, $key, $item['state']),
 					'MORE'			=> $item['more'] ? $language->lang('CALADRIUS_LIST_MORE', $item['more']) : '',
 				];
 				$template->assign_block_vars('groups.items', $row);
@@ -203,6 +203,26 @@ class main_module
 				];
 				$checker->set_checked($checked);
 				return $language->lang('CALADRIUS_MARKED');
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * What to do about a warning or a problem: KEY_TODO_WARN or KEY_TODO_BAD when the two need
+	 * different advice, otherwise KEY_TODO.
+	 */
+	protected function todo($language, $key, $state)
+	{
+		if (!in_array($state, ['warn', 'bad'], true))
+		{
+			return '';
+		}
+		foreach ([$key . '_TODO_' . strtoupper($state), $key . '_TODO'] as $k)
+		{
+			if ($language->is_set($k))
+			{
+				return $language->lang($k);
 			}
 		}
 		return '';

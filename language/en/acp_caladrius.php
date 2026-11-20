@@ -173,9 +173,12 @@ $lang = array_merge($lang, [
 	// Upload folders
 	'CALADRIUS_UPLOADS_TITLE'		=> 'Upload folders',
 	'CALADRIUS_UPLOADS_OK'			=> 'Nothing unusual in %d files.',
+	'CALADRIUS_UPLOADS_WARN'		=> 'Nothing unusual in %1$d files, apart from backup copies of extensions in phpBB’s private store/ folder (%2$d).',
 	'CALADRIUS_UPLOADS_BAD'			=> 'Found files that could run as programs.',
 	'CALADRIUS_UPLOADS_UNKNOWN'		=> 'Couldn’t be checked.',
 	'CALADRIUS_UPLOADS_TODO'		=> 'Upload folders should only hold pictures and attachments. Scripts or settings files there are a common way in for attackers. Remove them, then change the admin passwords.',
+	'CALADRIUS_UPLOADS_TODO_WARN'	=> 'Tools that update extensions, such as Extension Toolbox, keep the old version here. The web can’t reach store/, so they’re safe where they are, and the web shell check still looks inside them. Delete the ones you no longer need.',
+	'CALADRIUS_UPLOADS_BACKUP'		=> 'backup copy of an extension: %s',
 	'CALADRIUS_UPLOADS_SCRIPT'		=> 'script: %s',
 	'CALADRIUS_UPLOADS_HIDDEN'		=> 'PHP code hidden in: %s',
 	'CALADRIUS_UPLOADS_INSTALLCFG'	=> 'left over from installing or updating phpBB, and it can hold the database password. Delete it: %s',

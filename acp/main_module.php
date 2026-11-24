@@ -40,7 +40,7 @@ class main_module
 		$message = '';
 		$error = '';
 		if ($request->is_set_post('run') || $request->is_set_post('save') || $request->is_set_post('mark') || $request->is_set_post('undo')
-			|| $request->is_set_post('note_add') || $request->is_set_post('note_del'))
+			|| $request->is_set_post('note_add') || $request->is_set_post('note_del') || $request->is_set_post('note_edit'))
 		{
 			if (!check_form_key('personalgroupware_caladrius'))
 			{
@@ -66,7 +66,7 @@ class main_module
 					$message = $language->lang('CALADRIUS_SAVED');
 				}
 			}
-			else if ($request->is_set_post('note_add') || $request->is_set_post('note_del'))
+			else if ($request->is_set_post('note_add') || $request->is_set_post('note_del') || $request->is_set_post('note_edit'))
 			{
 				list($message, $error) = $this->note($checker, $user, $language, $request);
 			}
@@ -112,6 +112,8 @@ class main_module
 		$checked = $checker->checked();
 		$notes = $checker->notes();
 		$tickets = (string) $config['caladrius_tickets'];
+		// the note being edited (Edit is a plain link, so it only changes what this page shows)
+		$editing = $error ? '' : $request->variable('edit_note', '');
 		$by_group = array_fill_keys($order, []);
 		foreach ($results['items'] as $item)
 		{
@@ -189,12 +191,19 @@ class main_module
 				}
 				foreach ((isset($notes[$item['id']]) ? $notes[$item['id']] : []) as $n)
 				{
+					$note_id = $item['id'] . '|' . (int) $n['time'] . '|' . (int) $n['u'];
+					$own = (int) $n['u'] === (int) $user->data['user_id'];
 					$template->assign_block_vars('groups.items.notes', [
 						'BY'		=> $n['user'],
 						'WHEN'		=> $user->format_date($n['time']),
+						'EDITED'	=> !empty($n['edited']) ? $language->lang('CALADRIUS_NOTE_EDITED', $user->format_date($n['edited'])) : '',
 						'TEXT'		=> links::linkify($n['text'], $tickets),
-						'ID'		=> $item['id'] . '|' . (int) $n['time'] . '|' . (int) $n['u'],
-						'S_OWN'		=> (int) $n['u'] === (int) $user->data['user_id'],
+						'RAW'		=> htmlspecialchars($n['text'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+						'ID'		=> $note_id,
+						'ANCHOR'	=> 'note-' . substr(sha1($note_id), 0, 10),
+						'S_OWN'		=> $own,
+						'S_EDITING'	=> $own && $editing === $note_id,
+						'U_EDIT'	=> $this->u_action . '&amp;edit_note=' . urlencode($note_id) . '#note-' . substr(sha1($note_id), 0, 10),
 					]);
 					$report_list[] = '[*]' . $this->plain($language->lang('CALADRIUS_REPORT_NOTE', $n['user'], $user->format_date($n['time']), $n['text']));
 				}
@@ -282,6 +291,33 @@ class main_module
 	protected function note($checker, $user, $language, $request)
 	{
 		$notes = $checker->notes();
+		if ($request->is_set_post('note_edit'))
+		{
+			list($id, $time, $uid) = array_pad(explode('|', $request->variable('note_edit', '')), 3, '');
+			if ((int) $uid !== (int) $user->data['user_id'] || empty($notes[$id]))
+			{
+				return ['', ''];
+			}
+			list($text, $why) = $this->note_text($request, $language);
+			if ($why)
+			{
+				return ['', $why];
+			}
+			foreach ($notes[$id] as $i => $n)
+			{
+				if ((int) $n['time'] === (int) $time && (int) $n['u'] === (int) $uid)
+				{
+					if ($n['text'] !== $text)
+					{
+						$notes[$id][$i]['text'] = $text;
+						$notes[$id][$i]['edited'] = time();
+						$checker->set_notes($notes);
+					}
+					return [$language->lang('CALADRIUS_NOTE_UPDATED'), ''];
+				}
+			}
+			return ['', ''];
+		}
 		if ($request->is_set_post('note_del'))
 		{
 			list($id, $time, $uid) = array_pad(explode('|', $request->variable('note_del', '')), 3, '');
@@ -306,6 +342,25 @@ class main_module
 		{
 			return ['', ''];
 		}
+		list($text, $why) = $this->note_text($request, $language);
+		if ($why)
+		{
+			return ['', $why];
+		}
+		if (isset($notes[$id]) && count($notes[$id]) >= self::NOTES_PER_ITEM)
+		{
+			return ['', $language->lang('CALADRIUS_NOTE_TOO_MANY', self::NOTES_PER_ITEM)];
+		}
+		$notes[$id][] = ['u' => (int) $user->data['user_id'], 'user' => $user->data['username'], 'time' => time(), 'text' => $text];
+		$checker->set_notes($notes);
+		return [$language->lang('CALADRIUS_NOTE_SAVED'), ''];
+	}
+
+	/**
+	 * The note text from the form: [text, ''] or ['', why it can't be saved].
+	 */
+	protected function note_text($request, $language)
+	{
 		// raw: phpBB's usual request variable would store HTML entities. The text is escaped when it's shown.
 		$text = trim(str_replace("\r\n", "\n", (string) $request->raw_variable('note_text', '')));
 		if (function_exists('utf8_normalize_nfc'))
@@ -320,13 +375,7 @@ class main_module
 		{
 			return ['', $language->lang('CALADRIUS_NOTE_TOO_LONG', self::NOTE_MAX)];
 		}
-		if (isset($notes[$id]) && count($notes[$id]) >= self::NOTES_PER_ITEM)
-		{
-			return ['', $language->lang('CALADRIUS_NOTE_TOO_MANY', self::NOTES_PER_ITEM)];
-		}
-		$notes[$id][] = ['u' => (int) $user->data['user_id'], 'user' => $user->data['username'], 'time' => time(), 'text' => $text];
-		$checker->set_notes($notes);
-		return [$language->lang('CALADRIUS_NOTE_SAVED'), ''];
+		return [$text, ''];
 	}
 
 	/**

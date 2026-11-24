@@ -53,6 +53,7 @@ $lang = array_merge($lang, [
 	'CALADRIUS_REPORT_HEAD'		=> 'Caladrius %1$s report. phpBB %2$s, PHP %3$s',
 	'CALADRIUS_REPORT_FOOT'		=> 'Copied from Caladrius. Paths, email addresses, IP addresses and the board address were removed.',
 	'CALADRIUS_LIST_MORE'		=> 'and %d more',
+	'CALADRIUS_LIST_SHOW_MORE'	=> 'Show %d more',
 
 	'CALADRIUS_STATE_OK'		=> 'OK',
 	'CALADRIUS_STATE_WARN'		=> 'Check',
@@ -205,6 +206,7 @@ $lang = array_merge($lang, [
 	'CALADRIUS_CORE_CHANGED'		=> 'changed: %s',
 	'CALADRIUS_CORE_MISSING'		=> 'missing: %s',
 	'CALADRIUS_CORE_ADDED'			=> 'not in the package: %s',
+	'CALADRIUS_CORE_IMAGES'			=> '%d images changed, for example smilies or icons a style replaced. Images can’t run as code, so they aren’t listed one by one.',
 
 	// Upload folders
 	'CALADRIUS_UPLOADS_TITLE'		=> 'Upload folders',

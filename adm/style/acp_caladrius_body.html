@@ -19,6 +19,7 @@
 	.caladrius-body { flex: 1 1 auto; }
 	.caladrius-body h4 { margin: 0 0 4px; font-size: 1.1em; }
 	.caladrius-body ul { margin: 6px 0 0 18px; font-family: monospace; font-size: .95em; }
+	.caladrius-more summary { cursor: pointer; margin: 4px 0 0 18px; }
 	.caladrius-todo { margin-top: 6px; padding: 6px 8px; background: #f6f3e6; border-radius: 3px; }
 	.caladrius-copy { margin: 4px 0 12px; }
 	.caladrius-copy summary { cursor: pointer; }
@@ -140,8 +141,16 @@
 			{% if item.list|length %}
 			<ul>
 				{% for line in item.list %}<li>{{ line.TEXT }}</li>{% endfor %}
+				{% if not item.SHOW_MORE and item.MORE %}<li>{{ item.MORE }}</li>{% endif %}
+			</ul>
+			{% if item.SHOW_MORE %}
+			<details class="caladrius-more"><summary>{{ item.SHOW_MORE }}</summary>
+			<ul>
+				{% for line in item.extra %}<li>{{ line.TEXT }}</li>{% endfor %}
 				{% if item.MORE %}<li>{{ item.MORE }}</li>{% endif %}
 			</ul>
+			</details>
+			{% endif %}
 			{% endif %}
 			{% if item.TODO %}<div class="caladrius-todo"><strong>{{ lang('CALADRIUS_WHAT_TO_DO') }}:</strong> {{ item.TODO }}</div>{% endif %}
 			{% if item.S_CHECKED %}

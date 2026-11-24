@@ -161,6 +161,7 @@ class main_module
 					'DETAIL'		=> $this->text($language, $user, $key . '_' . strtoupper($item['state']), $item['args']),
 					'TODO'			=> $this->todo($language, $key, $item['state']),
 					'MORE'			=> $item['more'] ? $language->lang('CALADRIUS_LIST_MORE', $item['more']) : '',
+					'SHOW_MORE'		=> count($item['list']) > 25 ? $language->lang('CALADRIUS_LIST_SHOW_MORE', count($item['list']) - 25) : '',
 				];
 				$template->assign_block_vars('groups.items', $row);
 				$colour = isset($colours[$item['state']]) ? $colours[$item['state']] : $colours['unknown'];
@@ -186,7 +187,7 @@ class main_module
 							? $this->text($language, $user, $line['key'], isset($line['args']) ? $line['args'] : [])
 							: $line;
 					}
-					$template->assign_block_vars('groups.items.list', ['TEXT' => $text]);
+					$template->assign_block_vars(count($report_list) < 25 ? 'groups.items.list' : 'groups.items.extra', ['TEXT' => $text]);
 					$report_list[] = '[*]' . $this->plain($text);
 				}
 				foreach ((isset($notes[$item['id']]) ? $notes[$item['id']] : []) as $n)

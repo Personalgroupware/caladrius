@@ -38,6 +38,8 @@ A mark only holds while the check finds exactly the same thing. If it finds some
 
 From 0.1.7-dev, any item can have notes. Each note shows who wrote it and when, in each administrator's own timezone, and stays whatever the item does later. Authors can edit or delete their own notes (from 0.1.8-dev an edited note shows when it was edited). Notes are included in **Copy report**.
 
+From 0.1.9-dev, an item with a long list shows its first 25 lines and a **Show more** link for the rest, and **Copy report** includes every line (up to 200 per item). Changed images in phpBB's own files, such as smilies or icons a style replaced, are counted on one line instead of listed one by one. An image with PHP inside is still listed by name.
+
 Set a **Ticket address** under Settings (for example `https://github.com/owner/repo/issues`) and `#38` in a note links to ticket 38 there. Full `https://` addresses in notes link too. Everything else in a note is shown exactly as typed, never as HTML. Changes to the ticket address are recorded in phpBB's admin log. Caladrius never reads your tickets: the link only opens them.
 
 ## When it runs

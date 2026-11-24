@@ -27,6 +27,12 @@ class checker
 	];
 
 	/** Code patterns typical of web shells, injected code and crypto-miners. */
+	/** Lines kept per item. The page shows the first 25 and the rest behind "Show more", Copy report has them all. */
+	const LIST_KEEP = 200;
+
+	/** Changed images are counted on one line rather than listed: styles often replace smilies and icons. */
+	const IMAGE = '/\.(gif|png|jpe?g|webp|bmp|ico)$/i';
+
 	const PATTERNS = [
 		'eval of decoded data'				=> '/\beval\s*\(\s*(base64_decode|gzinflate|gzuncompress|gzdecode|str_rot13|strrev|rawurldecode|hex2bin)\s*\(/i',
 		'eval or assert of request data'	=> '/\b(eval|assert)\s*\(\s*(stripslashes\s*\()?\$_(GET|POST|REQUEST|COOKIE|SERVER)\b/i',
@@ -144,8 +150,8 @@ class checker
 			'group'	=> $group ?: (isset($groups[$id]) ? $groups[$id] : 'tamper'),
 			'state'	=> $state,
 			'args'	=> $args,
-			'list'	=> array_slice($list, 0, 25),
-			'more'	=> max(0, count($list) - 25),
+			'list'	=> array_slice($list, 0, self::LIST_KEEP),
+			'more'	=> max(0, count($list) - self::LIST_KEEP),
 			'sig'	=> $this->signature($id, $state, $args, $list),
 		];
 	}
@@ -671,6 +677,7 @@ class checker
 			return $this->item('core_files', 'unknown', [$this->config['version']]);
 		}
 		$changed = $missing = $added = [];
+		$images = 0;
 		foreach ($m as $path => $sha)
 		{
 			if ($path === 'config.php')
@@ -688,6 +695,12 @@ class checker
 			}
 			if ($this->hash($path) !== $sha)
 			{
+				// an image with PHP inside is listed by name like any other changed file
+				if (preg_match(self::IMAGE, $path) && !preg_match('/<\?(php|=)/i', (string) @file_get_contents($this->root . $path)))
+				{
+					$images++;
+					continue;
+				}
 				$changed[] = ['key' => 'CALADRIUS_CORE_CHANGED', 'args' => [$path]];
 			}
 		}
@@ -701,7 +714,11 @@ class checker
 				}
 			}
 		}
-		$list = array_merge($changed, $missing, $added);
+		$list = array_merge($changed, $added, $missing);
+		if ($images)
+		{
+			$list[] = ['key' => 'CALADRIUS_CORE_IMAGES', 'args' => [$images]];
+		}
 		$args = [count($m), $this->config['version'], count($list)];
 		return $this->item('core_files', $list ? 'warn' : 'ok', $args, $list);
 	}
@@ -837,7 +854,10 @@ class checker
 			// This file holds the patterns below as text. In Caladrius's own folder, blank out only
 			// the lines that define a pattern, and scan the rest like any other extension, so code
 			// planted in this folder is still found.
-			if (strpos($f, $own) === 0)
+			// The same goes for copies of Caladrius's checker kept under another folder name
+			// (an old version renamed to caladrius.012, or an update tool's backup).
+			if (strpos($f, $own) === 0 || (basename($f) === 'checker.php'
+				&& strpos($src, 'namespace personalgroupware\caladrius\service;') !== false))
 			{
 				$src = preg_replace('~^\s*(?:[\'"][^\'"\n]+[\'"]\s*=>|const\s+\w+\s*=)\s*\'/.*$~m', '', $src);
 			}

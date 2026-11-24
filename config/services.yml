@@ -9,6 +9,7 @@ services:
             - '%core.root_path%'
             - '%core.cache_dir%'
             - '%core.table_prefix%'
+            - '@service_container'
 
     personalgroupware.caladrius.alerts:
         class: personalgroupware\caladrius\service\alerts

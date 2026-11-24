@@ -83,6 +83,30 @@ $lang = array_merge($lang, [
 	'CALADRIUS_EMAIL_BOARD_OFF'	=> 'Board email is switched off, so no alerts can be sent.',
 	'CALADRIUS_SAVED'			=> 'Settings saved.',
 
+	'CALADRIUS_LAPSED'			=> 'Was marked as checked by %1$s, %2$s, but this check has found something different since.',
+	'CALADRIUS_LAPSED_WORSE'	=> 'Was marked as checked by %1$s, %2$s, but it has got worse since.',
+
+	'CALADRIUS_NOTES'			=> 'Notes',
+	'CALADRIUS_NOTE_ADD'		=> 'Add a note',
+	'CALADRIUS_NOTE_SAVE'		=> 'Save note',
+	'CALADRIUS_NOTE_EXPLAIN'	=> 'Other administrators see it with your name and the time.',
+	'CALADRIUS_NOTE_EXPLAIN_TICKETS'	=> 'Other administrators see it with your name and the time. Type #38 to link ticket 38.',
+	'CALADRIUS_NOTE_DELETE'		=> 'Delete',
+	'CALADRIUS_NOTE_SAVED'		=> 'Note saved.',
+	'CALADRIUS_NOTE_DELETED'	=> 'Note deleted.',
+	'CALADRIUS_NOTE_EMPTY'		=> 'The note is empty.',
+	'CALADRIUS_NOTE_TOO_LONG'	=> 'Notes can be up to %d characters.',
+	'CALADRIUS_NOTE_TOO_MANY'	=> 'This item already has %d notes. Delete an old one first.',
+	'CALADRIUS_NOTE_BY'			=> '%1$s, %2$s',
+	'CALADRIUS_REPORT_NOTE'		=> 'Note by %1$s, %2$s: %3$s',
+
+	'CALADRIUS_TICKETS'			=> 'Ticket address',
+	'CALADRIUS_TICKETS_EXPLAIN'	=> 'Where this board’s tickets live, for example a GitHub repository’s issues page (https://github.com/owner/repo/issues). Then #38 in a note links to ticket 38 there. Leave it empty to turn that off. Caladrius never reads your tickets, the link just opens them.',
+	'CALADRIUS_TICKETS_BAD'		=> 'The ticket address doesn’t look like a web address, so it wasn’t saved.',
+	'CALADRIUS_TICKETS_HTTPS'	=> 'Please use a full https:// address for the ticket address, for example https://github.com/owner/repo/issues',
+	'CALADRIUS_TICKETS_QUERY'	=> 'Please leave out anything after ? or # in the ticket address.',
+	'CALADRIUS_SETTINGS_TITLE'	=> 'Settings',
+
 	// Scheduled jobs
 	'CALADRIUS_CRON_TITLE'		=> 'Scheduled jobs',
 	'CALADRIUS_CRON_OK'			=> 'Running normally. The most recent job ran %s.',
@@ -92,6 +116,15 @@ $lang = array_merge($lang, [
 	'CALADRIUS_CRON_TODO'		=> 'phpBB tidies up old logins and sends its emails through these jobs. They only run when people visit the board, unless the server runs them. If they have stopped, ask your host to run “php bin/phpbbcli.php cron:run” every five minutes, then switch on “Run periodic tasks from system cron” under Server settings.',
 	'CALADRIUS_CRON_JOB'		=> '%1$s last ran %2$s',
 	'CALADRIUS_CRON_LOCK'		=> 'A job started %s and still holds the lock, which stops the others',
+	'CALADRIUS_CRON_STOPS_AT'	=> [
+		0	=> 'The scheduler keeps stopping at “%1$s”: it last ran %2$s. Jobs before it still run, so this job most likely crashes every run',
+		1	=> 'The scheduler keeps stopping at “%1$s”: it last ran %2$s, and the job after it hasn’t run either. Jobs before it still run, so this job most likely crashes every run',
+		2	=> 'The scheduler keeps stopping at “%1$s”: it last ran %2$s, and the %3$d jobs after it haven’t run either. Jobs before it still run, so this job most likely crashes every run',
+	],
+	'CALADRIUS_CRON_STOPS_HELP'	=> 'To see the error, run “php bin/phpbbcli.php cron:run -v” on the server, or have the server keep the scheduler’s output instead of throwing it away. Updating or switching off the extension that owns the job usually fixes it.',
+	'CALADRIUS_STALE'			=> 'These results are from %1$s. Caladrius checks once a day from the board’s scheduled jobs, and that hasn’t happened since.',
+	'CALADRIUS_STALE_STOPS_AT'	=> 'The scheduler keeps stopping at “%1$s” (it last ran %2$s), so the jobs after it, Caladrius included, don’t run. That job most likely crashes every run. Press “Check now” for the full results.',
+	'CALADRIUS_STALE_NOT_RUNNING'	=> 'No scheduled job has run for a while, so the scheduler isn’t running. Press “Check now” for the full results.',
 
 	// Email queue
 	'CALADRIUS_QUEUE_TITLE'		=> 'Email queue',
@@ -165,10 +198,10 @@ $lang = array_merge($lang, [
 	'CALADRIUS_CORE_FILES_OK'		=> '%1$d files compared with the official phpBB %2$s package. None changed.',
 	'CALADRIUS_CORE_FILES_WARN'		=> '%1$d files compared with the official phpBB %2$s package. These are different:',
 	'CALADRIUS_CORE_FILES_UNKNOWN'	=> 'This version of Caladrius doesn’t include the fingerprints for phpBB %s, so this can’t be checked.',
-	'CALADRIUS_CORE_FILES_TODO'		=> 'Changes to phpBB’s files are usually edits someone made on purpose. If nobody you know made these, have the files checked and replace them from the official package.',
+	'CALADRIUS_CORE_FILES_TODO'		=> 'Changed files are usually edits someone made on purpose. If nobody you know made them, have them checked, then replace them from the official package. Missing files can be uploaded from the package too. Scripts marked “not in the package” are different: uploading the package doesn’t remove them, because it only adds and replaces files. Most are left over from an older phpBB version, for example vendor/lusitanian/, which newer phpBB replaced with vendor/carlos-mg89/. Delete those, then press Check now. If you don’t know where a script came from, have it checked before deleting it.',
 	'CALADRIUS_CORE_CHANGED'		=> 'changed: %s',
 	'CALADRIUS_CORE_MISSING'		=> 'missing: %s',
-	'CALADRIUS_CORE_ADDED'			=> 'added script: %s',
+	'CALADRIUS_CORE_ADDED'			=> 'not in the package: %s',
 
 	// Upload folders
 	'CALADRIUS_UPLOADS_TITLE'		=> 'Upload folders',

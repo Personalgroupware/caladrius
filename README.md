@@ -9,7 +9,7 @@ It only reads. It never changes posts, users, files or settings, and Caladrius i
 ## What it checks
 
 **Behind the scenes**
-- **Scheduled jobs:** when each of phpBB's jobs last ran, and whether any have stopped or a stuck lock is holding them up.
+- **Scheduled jobs:** when each of phpBB's jobs last ran, and whether any have stopped or a stuck lock is holding them up. From 0.1.7-dev it also names a job that crashes every run: phpBB runs due jobs in a fixed order, so when one job dies, the jobs after it never run while the ones before it look fine. If Caladrius's own daily check has stopped, the page says so when you open it and asks the scheduler which job it stops at.
 - **Email queue:** how many emails are waiting, and whether board email is switched on.
 - **Database size:** the largest tables, and a sessions table that keeps growing (a sign tidying has stopped). MySQL and MariaDB only.
 - **Errors logged by phpBB:** critical entries in the last 24 hours.
@@ -32,7 +32,13 @@ Each item is green, amber or red, with one line on what to do about anything tha
 
 From 0.1.5-dev, an amber or red item you've looked at and found harmless can be marked as checked. It stops counting towards the summary but stays on the page, greyed out, with who marked it, when, and an Undo button. **Hide checked items** / **Show checked items** next to the summary switches them out of view, and the summary always says how many are marked.
 
-A mark only holds while the check finds exactly the same thing. If it finds something different (another changed file, a new error, a newer version) or the item gets worse, it comes back as a normal warning.
+A mark only holds while the check finds exactly the same thing. If it finds something different (another changed file, a new error, a newer version) or the item gets worse, it comes back as a normal warning. From 0.1.7-dev it then says who marked it and when, and whether it has changed or got worse since.
+
+## Notes and ticket links
+
+From 0.1.7-dev, any item can have notes. Each note shows who wrote it and when, in each administrator's own timezone, and stays whatever the item does later. Authors can delete their own notes. Notes are included in **Copy report**.
+
+Set a **Ticket address** under Settings (for example `https://github.com/owner/repo/issues`) and `#38` in a note links to ticket 38 there. Full `https://` addresses in notes link too. Everything else in a note is shown exactly as typed, never as HTML. Changes to the ticket address are recorded in phpBB's admin log. Caladrius never reads your tickets: the link only opens them.
 
 ## When it runs
 

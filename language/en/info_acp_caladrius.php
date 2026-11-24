@@ -21,4 +21,5 @@ if (empty($lang) || !is_array($lang))
 $lang = array_merge($lang, [
 	'ACP_CALADRIUS_TITLE'	=> 'Caladrius',
 	'ACP_CALADRIUS_HEALTH'	=> 'Board health',
+	'LOG_CALADRIUS_TICKETS'	=> '<strong>Caladrius ticket address changed</strong><br />» from %1$s to %2$s',
 ]);

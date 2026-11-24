@@ -56,9 +56,27 @@ class checker
 	/** Folders in store/ already looked at by extension_backup(): [dir => is a backup copy]. */
 	protected $backup_dirs = [];
 
+	/** @var \Symfony\Component\DependencyInjection\ContainerInterface|null for phpBB's scheduler (fetched when needed) */
+	protected $container;
+
+	/** phpBB core jobs whose last-run setting isn't named after the job. */
+	const CORE_LAST = [
+		'cron.task.core.queue'					=> 'last_queue_run',
+		'cron.task.core.tidy_cache'				=> 'cache_last_gc',
+		'cron.task.core.tidy_database'			=> 'database_last_gc',
+		'cron.task.core.tidy_search'			=> 'search_last_gc',
+		'cron.task.core.tidy_sessions'			=> 'session_last_gc',
+		'cron.task.core.tidy_guest_sessions'	=> 'session_guest_last_gc',
+		'cron.task.core.tidy_warnings'			=> 'warnings_last_gc',
+		'cron.task.core.tidy_plupload'			=> 'plupload_last_gc',
+		'cron.task.core.prune_notifications'	=> 'read_notification_last_gc',
+		'cron.task.core.purge_oauth_states'		=> 'oauth_states_last_gc',
+	];
+
 	public function __construct(\phpbb\config\config $config, \phpbb\config\db_text $config_text, \phpbb\db\driver\driver_interface $db,
-		\phpbb\version_helper $version_helper, $root_path, $cache_dir, $table_prefix)
+		\phpbb\version_helper $version_helper, $root_path, $cache_dir, $table_prefix, $container = null)
 	{
+		$this->container = $container;
 		$this->config = $config;
 		$this->config_text = $config_text;
 		$this->db = $db;
@@ -187,6 +205,24 @@ class checker
 		}
 	}
 
+	/** Notes administrators left on items: [id => [['u' => user id, 'user' => name, 'time', 'text'], ...]]. */
+	public function notes()
+	{
+		$json = $this->config_text->get('caladrius_notes');
+		$data = $json ? json_decode($json, true) : null;
+		return is_array($data) ? $data : [];
+	}
+
+	public function set_notes(array $notes)
+	{
+		$notes = array_filter($notes);
+		$json = $notes ? json_encode($notes) : '';
+		if ($json !== (string) $this->config_text->get('caladrius_notes'))
+		{
+			$this->config_text->set('caladrius_notes', $json);
+		}
+	}
+
 	/** The fingerprint of a stored item (results saved before 0.1.5 have none). */
 	public function item_signature(array $item)
 	{
@@ -259,9 +295,142 @@ class checker
 		{
 			$list[] = ['key' => 'CALADRIUS_CRON_LOCK', 'args' => [['ago' => $now - (int) $lock[0]]]];
 		}
+		// a job that crashes every run, so the jobs after it never run
+		$watch = $this->scheduler_watch();
+		if ($watch && $watch['stuck'])
+		{
+			array_unshift($list, ['key' => 'CALADRIUS_CRON_STOPS_AT', 'args' => [$watch['stuck'], ['ago' => $watch['waiting']], count($watch['after'])]],
+				['key' => 'CALADRIUS_CRON_STOPS_HELP']);
+			$stopped[] = $watch['stuck'];
+		}
 
 		$state = $stopped ? 'bad' : (($late || $list) ? 'warn' : 'ok');
 		return $this->item('cron', $state, [['ago' => $now - $latest]], $list);
+	}
+
+	/**
+	 * Is one scheduled job crashing every run? phpBB runs the due jobs one after another in a fixed order, so
+	 * when a job crashes the run, the jobs before it keep running and it and the ones after it never do.
+	 * Returns null when phpBB's scheduler can't be asked, otherwise
+	 * ['stuck' => first job that never runs or '', 'after' => [later jobs that don't run either],
+	 *  'waiting' => seconds since that job last ran, 'running' => whether any job ran in the last 2 hours].
+	 */
+	public function scheduler_watch()
+	{
+		if (!$this->container || !$this->container->has('cron.manager'))
+		{
+			return null;
+		}
+		try
+		{
+			$names = [];
+			foreach ($this->container->get('cron.manager')->find_all_ready_tasks() as $task)
+			{
+				$names[] = $task->get_name();
+			}
+		}
+		catch (\Throwable $e)
+		{
+			return null;
+		}
+
+		$now = time();
+		$latest = 0;
+		foreach ($this->config as $name => $value)
+		{
+			if (preg_match('/(_last_gc|_last_run|_last_cron)$/', $name) || $name === 'last_queue_run')
+			{
+				$latest = max($latest, (int) $value);
+			}
+		}
+		$lock = explode(' ', (string) $this->config['cron_lock']);
+		// a run that has held the lock for 15 minutes or more has died (a normal run takes a minute or two)
+		$held_dead = (int) $lock[0] && $now - (int) $lock[0] >= 900;
+
+		$last = $passed = [];
+		foreach ($names as $i => $name)
+		{
+			$last[$name] = $this->last_run_for($name);
+			if ($last[$name] && $now - $last[$name] < 7200)
+			{
+				$passed[] = $i;
+			}
+		}
+		$after_pos = $passed ? max($passed) : -1;
+		$stuck = [];
+		foreach ($names as $i => $name)
+		{
+			if ($i <= $after_pos)
+			{
+				continue;
+			}
+			if ($last[$name])
+			{
+				$every = $this->interval_for($name);
+				if ($now - $last[$name] - $every >= 7200)
+				{
+					$stuck[] = $name;
+				}
+			}
+			else if ($held_dead)
+			{
+				$stuck[] = $name;
+			}
+		}
+		$first = $stuck ? $stuck[0] : '';
+		return [
+			'stuck'		=> $first,
+			'after'		=> array_slice($stuck, 1),
+			'waiting'	=> $first ? $now - ($last[$first] ?: (int) $lock[0]) : 0,
+			'running'	=> $latest && $now - $latest < 7200,
+		];
+	}
+
+	/** The job's own last-run time from the board's settings, or 0 if it keeps none we can match. */
+	protected function last_run_for($task)
+	{
+		$key = $this->config_key_for($task);
+		return $key ? (int) $this->config[$key] : 0;
+	}
+
+	/** How often the job runs (its "<name>_gc" setting), a day if it has none. */
+	protected function interval_for($task)
+	{
+		$key = $this->config_key_for($task);
+		if ($key && substr($key, -8) === '_last_gc' && isset($this->config[substr($key, 0, -8) . '_gc']))
+		{
+			return (int) $this->config[substr($key, 0, -8) . '_gc'];
+		}
+		return 86400;
+	}
+
+	protected function config_key_for($task)
+	{
+		if (isset(self::CORE_LAST[$task]) && isset($this->config[self::CORE_LAST[$task]]))
+		{
+			return self::CORE_LAST[$task];
+		}
+		$noise = ['cron', 'task', 'core', 'last', 'gc', 'run', 'ext', 'tidy', 'prune', 'check'];
+		$words = array_diff(preg_split('/[._\-]+/', strtolower($task)), $noise);
+		$best = null;
+		$score = 0;
+		$size = PHP_INT_MAX;
+		foreach ($this->config as $name => $value)
+		{
+			if (!preg_match('/^(.+)_(last_gc|last_run|last_cron)$/', $name, $m))
+			{
+				continue;
+			}
+			$kw = array_diff(preg_split('/[._\-]+/', strtolower($m[1])), $noise);
+			$s = count(array_intersect($words, $kw));
+			if ($kw && $s && ($s > $score || ($s === $score && count($kw) < $size)))
+			{
+				$best = $name;
+				$score = $s;
+				$size = count($kw);
+			}
+		}
+		return $best;
 	}
 
 	/** The email queue, which phpBB keeps in a PHP file until a scheduled job sends it. */
@@ -652,7 +821,7 @@ class checker
 		$list = [];
 		foreach ($this->walk('', ['vendor', 'cache', 'docs']) as $f)
 		{
-			if (strpos($f, $own) === 0 || !preg_match('/\.(php\d?|phtml|inc|js|html?)$/i', $f))
+			if (!preg_match('/\.(php\d?|phtml|inc|js|html?)$/i', $f))
 			{
 				continue;
 			}
@@ -664,6 +833,13 @@ class checker
 			if ($src === false)
 			{
 				continue;
+			}
+			// This file holds the patterns below as text. In Caladrius's own folder, blank out only
+			// the lines that define a pattern, and scan the rest like any other extension, so code
+			// planted in this folder is still found.
+			if (strpos($f, $own) === 0)
+			{
+				$src = preg_replace('~^\s*(?:[\'"][^\'"\n]+[\'"]\s*=>|const\s+\w+\s*=)\s*\'/.*$~m', '', $src);
 			}
 			if (preg_match('/\.(php\d?|phtml|inc)$/i', $f))
 			{

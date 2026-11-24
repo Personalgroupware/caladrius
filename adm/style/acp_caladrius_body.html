@@ -31,13 +31,29 @@
 	.caladrius-mark form { display: inline; }
 	.caladrius-checked-by { margin-top: 6px; font-style: italic; }
 	.caladrius-version { margin-top: 16px; text-align: right; color: #777; font-size: .9em; }
+	.caladrius-lapsed { margin-top: 6px; color: #b26a00; font-style: italic; }
+	.caladrius-body ul.caladrius-notes { list-style: none; margin: 8px 0 0; padding: 0; font-family: inherit; font-size: 1em; }
+	.caladrius-notes li { border-left: 3px solid #ccc; padding: 3px 0 3px 8px; margin-top: 5px; overflow-wrap: anywhere; white-space: pre-line; }
+	.caladrius-notes .caladrius-note-by { display: block; color: #777; font-size: .9em; white-space: normal; }
+	.caladrius-notes form { display: inline; }
+	.caladrius-add-note { margin-top: 8px; }
+	.caladrius-add-note summary { cursor: pointer; color: #555; }
+	.caladrius-add-note textarea { width: 100%; box-sizing: border-box; min-height: 60px; margin-top: 6px; }
 </style>
 
 <h1>{{ lang('ACP_CALADRIUS_TITLE') }}: {{ lang('ACP_CALADRIUS_HEALTH') }}</h1>
 <p>{{ lang('CALADRIUS_INTRO') }}</p>
 
+{% if STALE %}
+<div class="errorbox"><p>{{ STALE }}</p></div>
+{% endif %}
+
 {% if S_MESSAGE %}
 <div class="successbox"><p>{{ S_MESSAGE }}</p></div>
+{% endif %}
+
+{% if S_ERROR %}
+<div class="errorbox"><p>{{ S_ERROR }}</p></div>
 {% endif %}
 
 <p class="caladrius-summary {% if S_PROBLEMS %}problems{% else %}ok{% endif %}">{{ SUMMARY }}</p>
@@ -134,6 +150,7 @@
 				</form>
 			</div>
 			{% elseif item.S_CAN_MARK %}
+			{% if item.LAPSED %}<div class="caladrius-lapsed">{{ item.LAPSED }}</div>{% endif %}
 			<div class="caladrius-mark">
 				<form method="post" action="{{ U_ACTION }}">
 					<button class="button2" type="submit" name="mark" value="{{ item.ID }}" title="{{ lang('CALADRIUS_MARK_EXPLAIN') }}">{{ lang('CALADRIUS_MARK') }}</button>
@@ -141,6 +158,23 @@
 				</form>
 			</div>
 			{% endif %}
+			{% if item.notes|length %}
+			<ul class="caladrius-notes" aria-label="{{ lang('CALADRIUS_NOTES') }}">
+				{% for note in item.notes %}
+				<li><span class="caladrius-note-by">{{ lang('CALADRIUS_NOTE_BY', note.BY, note.WHEN) }}
+					{% if note.S_OWN %}<form method="post" action="{{ U_ACTION }}"><button class="button2" type="submit" name="note_del" value="{{ note.ID }}">{{ lang('CALADRIUS_NOTE_DELETE') }}</button>{{ S_FORM_TOKEN }}</form>{% endif %}</span>{{ note.TEXT }}</li>
+				{% endfor %}
+			</ul>
+			{% endif %}
+			<details class="caladrius-add-note">
+				<summary>{{ lang('CALADRIUS_NOTE_ADD') }}</summary>
+				<form method="post" action="{{ U_ACTION }}">
+					<textarea name="note_text" maxlength="{{ NOTE_MAX }}" required="required" aria-label="{{ lang('CALADRIUS_NOTE_ADD') }}: {{ item.TITLE }}"></textarea>
+					<p><button class="button1" type="submit" name="note_add" value="{{ item.ID }}">{{ lang('CALADRIUS_NOTE_SAVE') }}</button>
+						<span>{% if TICKETS %}{{ lang('CALADRIUS_NOTE_EXPLAIN_TICKETS') }}{% else %}{{ lang('CALADRIUS_NOTE_EXPLAIN') }}{% endif %}</span></p>
+					{{ S_FORM_TOKEN }}
+				</form>
+			</details>
 		</div>
 	</div>
 	{% endfor %}
@@ -174,7 +208,7 @@
 
 <form id="caladrius_settings" method="post" action="{{ U_ACTION }}">
 	<fieldset>
-		<legend>{{ lang('CALADRIUS_EMAIL_TITLE') }}</legend>
+		<legend>{{ lang('CALADRIUS_SETTINGS_TITLE') }}</legend>
 		<dl>
 			<dt><label for="caladrius_email">{{ lang('CALADRIUS_EMAIL') }}{{ lang('COLON') }}</label><br />
 				<span>{{ lang('CALADRIUS_EMAIL_EXPLAIN') }}</span>
@@ -183,6 +217,11 @@
 				<label><input type="radio" class="radio" id="caladrius_email" name="caladrius_email" value="1"{% if S_EMAIL %} checked="checked"{% endif %} /> {{ lang('YES') }}</label>
 				<label><input type="radio" class="radio" name="caladrius_email" value="0"{% if not S_EMAIL %} checked="checked"{% endif %} /> {{ lang('NO') }}</label>
 			</dd>
+		</dl>
+		<dl>
+			<dt><label for="caladrius_tickets">{{ lang('CALADRIUS_TICKETS') }}{{ lang('COLON') }}</label><br />
+				<span>{{ lang('CALADRIUS_TICKETS_EXPLAIN') }}</span></dt>
+			<dd><input type="url" class="inputbox autowidth" id="caladrius_tickets" name="caladrius_tickets" size="60" maxlength="255" value="{{ TICKETS|e('html_attr') }}" placeholder="https://github.com/owner/repo/issues" /></dd>
 		</dl>
 		<p class="submit-buttons">
 			<input class="button1" type="submit" name="save" value="{{ lang('SUBMIT') }}" />

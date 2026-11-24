@@ -10,6 +10,8 @@
 
 namespace personalgroupware\caladrius\acp;
 
+use personalgroupware\caladrius\service\links;
+
 class main_module
 {
 	public $u_action;
@@ -36,7 +38,9 @@ class main_module
 		add_form_key('personalgroupware_caladrius');
 
 		$message = '';
-		if ($request->is_set_post('run') || $request->is_set_post('save') || $request->is_set_post('mark') || $request->is_set_post('undo'))
+		$error = '';
+		if ($request->is_set_post('run') || $request->is_set_post('save') || $request->is_set_post('mark') || $request->is_set_post('undo')
+			|| $request->is_set_post('note_add') || $request->is_set_post('note_del'))
 		{
 			if (!check_form_key('personalgroupware_caladrius'))
 			{
@@ -45,7 +49,26 @@ class main_module
 			if ($request->is_set_post('save'))
 			{
 				$config->set('caladrius_email', $request->variable('caladrius_email', 0) ? 1 : 0);
-				$message = $language->lang('CALADRIUS_SAVED');
+				list($tickets, $why) = links::clean_tickets($request->raw_variable('caladrius_tickets', ''));
+				if ($why)
+				{
+					$error = $language->lang($why);
+				}
+				else
+				{
+					$old = (string) $config['caladrius_tickets'];
+					if ($tickets !== $old)
+					{
+						$config->set('caladrius_tickets', $tickets);
+						$phpbb_container->get('log')->add('admin', $user->data['user_id'], $user->ip, 'LOG_CALADRIUS_TICKETS', false,
+							[$old !== '' ? $old : '-', $tickets !== '' ? $tickets : '-']);
+					}
+					$message = $language->lang('CALADRIUS_SAVED');
+				}
+			}
+			else if ($request->is_set_post('note_add') || $request->is_set_post('note_del'))
+			{
+				list($message, $error) = $this->note($checker, $user, $language, $request);
 			}
 			else if ($request->is_set_post('mark') || $request->is_set_post('undo'))
 			{
@@ -64,12 +87,31 @@ class main_module
 			list(, $results) = $checker->run();
 		}
 
+		// The daily check runs from the board's scheduler, so if the scheduler is stuck the stored results go
+		// stale and can't say why. Ask the scheduler now, while the page is open.
+		$stale = '';
+		if (time() - (int) $results['time'] > 26 * 3600)
+		{
+			$stale = $language->lang('CALADRIUS_STALE', $user->format_date($results['time']));
+			$watch = $checker->scheduler_watch();
+			if ($watch && $watch['stuck'] && $watch['running'])
+			{
+				$stale .= ' ' . $language->lang('CALADRIUS_STALE_STOPS_AT', $watch['stuck'], $this->ago($language, $watch['waiting']));
+			}
+			else if ($watch && !$watch['running'])
+			{
+				$stale .= ' ' . $language->lang('CALADRIUS_STALE_NOT_RUNNING');
+			}
+		}
+
 		$order = ['upkeep', 'versions', 'tamper'];
 		$colours = ['ok' => '#2e7d4f', 'warn' => '#b26a00', 'bad' => '#b3261e', 'unknown' => '#777777'];
 		$report = [];
 		$problems = 0;
 		$marked = 0;
 		$checked = $checker->checked();
+		$notes = $checker->notes();
+		$tickets = (string) $config['caladrius_tickets'];
 		$by_group = array_fill_keys($order, []);
 		foreach ($results['items'] as $item)
 		{
@@ -83,6 +125,10 @@ class main_module
 				}
 				else
 				{
+					if (isset($checked[$item['id']]['sig']))
+					{
+						$item['lapsed'] = $checked[$item['id']];
+					}
 					$problems++;
 				}
 			}
@@ -104,6 +150,9 @@ class main_module
 					'S_CAN_MARK'	=> !$is_checked && in_array($item['state'], ['warn', 'bad'], true),
 					'S_CHECKED'		=> $is_checked,
 					'CHECKED_BY'	=> $is_checked ? $language->lang('CALADRIUS_CHECKED_BY', $item['checked']['user'], $user->format_date($item['checked']['time'])) : '',
+					'LAPSED'		=> isset($item['lapsed']) ? $language->lang(
+						isset($item['lapsed']['state']) && $item['lapsed']['state'] === 'warn' && $item['state'] === 'bad' ? 'CALADRIUS_LAPSED_WORSE' : 'CALADRIUS_LAPSED',
+						$item['lapsed']['user'], $user->format_date($item['lapsed']['time'])) : '',
 					'STATE'			=> $item['state'],
 					'STATE_LABEL'	=> $language->lang('CALADRIUS_STATE_' . strtoupper($item['state'])),
 					'TITLE'			=> $language->lang($key . '_TITLE'),
@@ -138,6 +187,17 @@ class main_module
 					$template->assign_block_vars('groups.items.list', ['TEXT' => $text]);
 					$report_list[] = '[*]' . $this->plain($text);
 				}
+				foreach ((isset($notes[$item['id']]) ? $notes[$item['id']] : []) as $n)
+				{
+					$template->assign_block_vars('groups.items.notes', [
+						'BY'		=> $n['user'],
+						'WHEN'		=> $user->format_date($n['time']),
+						'TEXT'		=> links::linkify($n['text'], $tickets),
+						'ID'		=> $item['id'] . '|' . (int) $n['time'] . '|' . (int) $n['u'],
+						'S_OWN'		=> (int) $n['u'] === (int) $user->data['user_id'],
+					]);
+					$report_list[] = '[*]' . $this->plain($language->lang('CALADRIUS_REPORT_NOTE', $n['user'], $user->format_date($n['time']), $n['text']));
+				}
 				if ($report_list)
 				{
 					if ($row['MORE'])
@@ -166,6 +226,10 @@ class main_module
 		$template->assign_vars([
 			'U_ACTION'			=> $this->u_action,
 			'S_MESSAGE'			=> $message,
+			'S_ERROR'			=> $error,
+			'TICKETS'			=> $tickets,
+			'NOTE_MAX'			=> self::NOTE_MAX,
+			'STALE'				=> $stale,
 			'SUMMARY'			=> $summary,
 			'S_PROBLEMS'		=> (bool) $problems,
 			'MARKED'			=> $marked,
@@ -200,12 +264,69 @@ class main_module
 					'sig'	=> $checker->item_signature($item),
 					'time'	=> time(),
 					'user'	=> $user->data['username'],
+					'state'	=> $item['state'],
 				];
 				$checker->set_checked($checked);
 				return $language->lang('CALADRIUS_MARKED');
 			}
 		}
 		return '';
+	}
+
+	const NOTE_MAX = 1000;
+	const NOTES_PER_ITEM = 50;
+
+	/**
+	 * Add a note to an item, or delete one of your own. Returns [message, error].
+	 */
+	protected function note($checker, $user, $language, $request)
+	{
+		$notes = $checker->notes();
+		if ($request->is_set_post('note_del'))
+		{
+			list($id, $time, $uid) = array_pad(explode('|', $request->variable('note_del', '')), 3, '');
+			if ((int) $uid !== (int) $user->data['user_id'] || empty($notes[$id]))
+			{
+				return ['', ''];
+			}
+			$notes[$id] = array_values(array_filter($notes[$id], function ($n) use ($time, $uid) {
+				return !((int) $n['time'] === (int) $time && (int) $n['u'] === (int) $uid);
+			}));
+			$checker->set_notes($notes);
+			return [$language->lang('CALADRIUS_NOTE_DELETED'), ''];
+		}
+		$id = $request->variable('note_add', '');
+		$known = false;
+		$results = $checker->load();
+		foreach (($results ? $results['items'] : []) as $item)
+		{
+			$known = $known || $item['id'] === $id;
+		}
+		if (!$known)
+		{
+			return ['', ''];
+		}
+		// raw: phpBB's usual request variable would store HTML entities. The text is escaped when it's shown.
+		$text = trim(str_replace("\r\n", "\n", (string) $request->raw_variable('note_text', '')));
+		if (function_exists('utf8_normalize_nfc'))
+		{
+			$text = utf8_normalize_nfc($text);
+		}
+		if ($text === '')
+		{
+			return ['', $language->lang('CALADRIUS_NOTE_EMPTY')];
+		}
+		if (utf8_strlen($text) > self::NOTE_MAX)
+		{
+			return ['', $language->lang('CALADRIUS_NOTE_TOO_LONG', self::NOTE_MAX)];
+		}
+		if (isset($notes[$id]) && count($notes[$id]) >= self::NOTES_PER_ITEM)
+		{
+			return ['', $language->lang('CALADRIUS_NOTE_TOO_MANY', self::NOTES_PER_ITEM)];
+		}
+		$notes[$id][] = ['u' => (int) $user->data['user_id'], 'user' => $user->data['username'], 'time' => time(), 'text' => $text];
+		$checker->set_notes($notes);
+		return [$language->lang('CALADRIUS_NOTE_SAVED'), ''];
 	}
 
 	/**
